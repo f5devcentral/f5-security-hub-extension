@@ -1,22 +1,27 @@
 'use strict';
 
 const net = require('net');
+const util = require('util');
 
 const f5_overbridge = require('./f5_overbridge.js');
 const { listFindings, importFindings, describeFindings } = f5_overbridge;
 const { AsmLogStream } = require('./asm_to_json.js');
 const { affFromEvent } = require('./translate.js');
 
-
-
-
 const logForwarder = new net.createServer((socket) => {
     console.log(socket.remoteAddress + ' connected');
     new AsmLogStream(socket).on('data', (data) => {
         const event = JSON.parse(data);
         const finding = affFromEvent(event);
-        console.log(event);
-        console.log(finding);
+        const start = new Date();
+        importFindings(finding).then((data) => {
+            //console.log('event',event);
+            if (data.FailedCount || true) {
+                console.log(start, new Date());
+                console.log('finding', util.inspect(finding, { depth: null }));
+                console.log('repsonse', data);
+            }
+        });
     });
 
     socket.on('end', () => {

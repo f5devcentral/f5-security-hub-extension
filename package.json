@@ -4,9 +4,9 @@
   "description": "Receives ASM remote logs and imports them to AWS Overbridge",
   "main": "index.js",
   "scripts": {
-      "test": "echo \"Error: no test specified\" && exit 1",
-      "deploy": "rm *~;rm *#;scp -r -i ~/.ssh/demo.pem ./* ec2-user@54.89.153.220:~/overbridge",
-      "creds": "aws sts get-session-token > aws-token.json;aws sts get-caller-identity > aws-account.json"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "deploy": "rm *~;rm *#;scp -r -i ~/.ssh/demo.pem ./* ec2-user@54.89.153.220:~/overbridge",
+    "creds": "aws sts get-session-token > aws-token.json;aws sts get-caller-identity > aws-account.json"
   },
   "keywords": [
     "f5",
@@ -16,6 +16,7 @@
   "author": "Matthew Zinke <m.zinke@f5.com>",
   "license": "ISC",
   "dependencies": {
-    "aws-signature-v4": "^1.2.1"
+    "aws-signature-v4": "^1.2.1",
+    "csv-parse": "^3.1.3"
   }
 }

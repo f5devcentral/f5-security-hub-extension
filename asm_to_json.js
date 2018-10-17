@@ -1,7 +1,8 @@
 const net = require('net');
 const { Transform } = require('stream');
-
 const util = require('util');
+
+
 
 class LineStream extends Transform {
     /**
@@ -15,7 +16,7 @@ class LineStream extends Transform {
 
     _transform(data, encoding, callback) {
         const input = this.buffer + data.toString('utf8');
-        const lines = input.split('\n');
+        const lines = input.split(this.linebreak);
         this.buffer = lines.pop();
         while (lines.length > 0) {
             const line = lines.shift();
@@ -101,6 +102,8 @@ const aff_namespace_enum = [ "Software and Configuration Checks",
                              "Unusual Behaviors",
                              "Sensitive Data Identifications" ]
 
+const csvParse = require('csv-parse/lib/sync');
+
 class AsmToJson extends Transform {
     constructor(opts) {
         super(opts);
@@ -110,13 +113,11 @@ class AsmToJson extends Transform {
         
         const csv_line = data.toString().split(' ASM:').slice(1).join('');
         if( csv_line ) {
-            const csv_array = csv_line.slice(1, csv_line.length-2).split('","');
-            const asm_json = {};
-            csv_fields.forEach((key) => {
-                const val = csv_array.shift();
-                asm_json[key] = val;
-            });
-            callback(null, JSON.stringify(asm_json));
+            const input = `${csv_fields.join(',')}
+${csv_line}
+`
+            const asm_json = csvParse(input, { columns: true });
+            callback(null, JSON.stringify(asm_json[0]));
         } else {
             callback();
         }
@@ -124,6 +125,6 @@ class AsmToJson extends Transform {
 }
 
 function AsmLogStream(socket) {
-    return socket.pipe(new LineStream()).pipe(new AsmToJson());
+    return socket.pipe(new LineStream(null, '\r\n')).pipe(new AsmToJson());
 }
 module.exports.AsmLogStream = AsmLogStream;

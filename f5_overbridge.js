@@ -18,15 +18,6 @@ const overbridgeDescribePath = '/findings/describe';
 
 const credentials = require('./aws-token.json').Credentials;
 
-/*
-const credentials = {
-    "SecretAccessKey": "LbJqXTWVvJB0NfBjnOtURgu/dWQMAhh7B31GEWhH",
-    "SessionToken": "FQoGZXIvYXdzEM7//////////wEaDA/eVSod3YKGr2ycPCKsAYns7m1+GlB2+Dtt9aFUN4VuVYAzbekkDaMFeK6CDPfBZRVOk195W34yNE9evdWzzdTfHGCSJx5tqcZgjs/Z2NQKCTrDfm/WvHQ6UhDT9W6iIK6lfsPSbYlXu3OQHBDVEBibSujVnwOjtt45y2Le4qUNcwBsTW41KauVEgAD/0m49db/3B/8GrI6QDN7x/XTBvZRaBA5tDqoVmuVsrzSqHIIvVbUvrRlk8vQxsQoh+7+3QU=",
-    "Expiration": "2018-10-12T08:48:07Z",
-    "AccessKeyId": "ASIAQAV7CVPFBAHPNJMU"
-}
-*/
-
 const sigv4_opts = {
     key: credentials.AccessKeyId,
     secret: credentials.SecretAccessKey,
@@ -40,38 +31,15 @@ const sigv4_opts = {
 function createHash(plaintext, cb) {
     const test = crypto.createHash('sha256');
     test.on('readable', () => {
-        //console.log('test readable!', plaintext);
         const data = test.read();
         if( data ) {
             const hash = data.toString('hex');
-            //console.log('test hash:', hash);
             cb(hash);
-        } else {
-            //console.log('no data!');
         }
     });
-    //console.log('writing...');
     test.write(plaintext);
     test.end();
-    //console.log('digest', test.digest('hex'));
 }
-
-/*
-  Resources: [
-  {
-  Type: 'AWS::EC2::Instance',
-  Id: 'i-cafebabe',
-  }
-  ],
-
-  Network: {
-  SourceIpV4: event.ip_client,
-  SourcePort: event.src_port,
-  DestinationIpV4: event.dest_ip,
-  DestinationPort: event.dest_port,
-  Protocol: event.protocol
-  }
-*/
 
 function overbridgeCall(method, path, post_data, cb) {
     const simpleHttpHandler = (res) => {
@@ -88,7 +56,7 @@ function overbridgeCall(method, path, post_data, cb) {
             }
         });
     };
-
+    sigv4_opts.timestamp = new Date();
     createHash(post_data, (hash) => {
         const sig = sigv4.createPresignedURL(method,
                                              overbridgeHostname,
@@ -102,7 +70,6 @@ function overbridgeCall(method, path, post_data, cb) {
             method: method,
         };
 
-        //console.log(method, options);
         const req = https.request(options, simpleHttpHandler);
 
         req.write(post_data);
@@ -114,16 +81,24 @@ module.exports.overbridgeCall = overbridgeCall;
 function overbridgePromise(method, path, post_data) {
     return new Promise((resolve, reject) => {
         overbridgeCall(method, path, post_data, (data) => {
+            //console.log(method, path, post_data);
             resolve(data);
         });
     });
 };
 module.exports.overbridgePromise = overbridgePromise;
 
-
-
 function listFindings() {
-    return overbridgePromise('GET', overbridgeListPath, '');
+    const account = '001474472906';
+    const findingsQuery = {
+        Filters: {
+            AwsAccountId: [{
+                Value: account,
+                Comparison: 'EQUALS'
+            }]
+        }
+    }
+    return overbridgePromise('POST', overbridgeListPath, JSON.stringify(findingsQuery));
 }
 module.exports.listFindings = listFindings;
 
