@@ -1,8 +1,9 @@
+'use strict';
 const net = require('net');
-const { Transform } = require('stream');
+const Transform = require('stream').Transform;
 const util = require('util');
 
-
+const csvParse = require('csv-parse/lib/es5/sync');
 
 class LineStream extends Transform {
     /**
@@ -84,25 +85,6 @@ const csv_fields =
     "websocket_message_type",
     "x_forwarded_for_header_value"
 ]
-
-
-const severityMap = (severity) => {
-    const sevmap = {
-        "Informational": 0,
-        "Critical": 90,
-        "Error": 100
-    };
-    if (sevmap[severity] !== undefined) return sevmap[severity]
-    else return 99;
-};
-
-const aff_namespace_enum = [ "Software and Configuration Checks",
-                             "Threat Detections",
-                             "Effects",
-                             "Unusual Behaviors",
-                             "Sensitive Data Identifications" ]
-
-const csvParse = require('csv-parse/lib/sync');
 
 class AsmToJson extends Transform {
     constructor(opts) {
