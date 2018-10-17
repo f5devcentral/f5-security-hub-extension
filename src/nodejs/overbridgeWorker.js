@@ -16,6 +16,7 @@
 'use strict';
 const net = require('net');
 const util = require('util');
+const http = require('http');
 
 const f5_overbridge = require('./f5_overbridge.js');
 const AsmLogStream = require('./asm_to_json.js').AsmLogStream;
@@ -110,32 +111,55 @@ OverbridgeWorker.prototype.onStart = function(success, error) {
             ' } } servers add { 127.0.0.1:3000 } format { field-format none } } }'
           ].join(' ');
 
+    const httpOpts = {
+        host: 'localhost',
+        port: '8100',
+        path: '/mgmt/tm/util/bash',
+        method: 'POST',
+        auth: 'admin:f5p4ssw0rd!'
+    };
+
+    const postBody = {
+        command: 'run',
+        utilCmdArgs: `-c "tmsh ${create_log_profile_command}"`
+    };
+
+    const pReq = http.request(httpOpts, (res) => {
+        this.logger.fine(res.statusCode);
+        res.on('data', (data) => {
+            this.logger.fine(data.toString('utf8'));
+            console.log(data.toString('utf8'));
+        });
+    });
+    pReq.write(JSON.stringify(postBody));
+    pReq.end();
+
     //start the overbridge remote log forwarder
     const logForwarder = new net.createServer((socket) => {
-        console.log(socket.remoteAddress + ' connected');
+        this.logger.fine(socket.remoteAddress + ' connected');
         new AsmLogStream(socket).on('data', (data) => {
             const event = JSON.parse(data);
             const finding = affFromEvent(event);
             const start = new Date();
             f5_overbridge.importFindings(finding).then((data) => {
-                //console.log('event',event);
+                //this.logger.fine('event',event);
                 if (data.FailedCount || true) {
-                    console.log(start, new Date());
-                    console.log('finding', util.inspect(finding, { depth: null }));
-                    console.log('response', data);
+                    this.logger.fine(start, new Date());
+                    this.logger.fine('finding', util.inspect(finding, { depth: null }));
+                    this.logger.fine('response', data);
                 }
             });
         });
 
         socket.on('end', () => {
-            console.log('end disconnected ' + socket.remoteAddress);
+           this.logger.fine('end disconnected ' + socket.remoteAddress);
         });
 
         socket.on('close', () => {
-            console.log('close disconnected ' + socket.remoteAddress);
+            this.logger.fine('close disconnected ' + socket.remoteAddress);
         });
         socket.on('error', () => {
-            console.log('err disconnected ' + socket.remoteAddress);
+            this.logger.fine('err disconnected ' + socket.remoteAddress);
         });
     });
 
