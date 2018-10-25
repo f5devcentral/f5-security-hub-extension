@@ -16,6 +16,7 @@
   "author": "Matthew Zinke <m.zinke@f5.com>",
   "license": "ISC",
   "dependencies": {
+    "aws-sdk": "^2.342.0",
     "aws-signature-v4": "^1.2.1",
     "csv-parse": "^3.1.3"
   }

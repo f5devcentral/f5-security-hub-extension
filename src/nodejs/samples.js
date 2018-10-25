@@ -63,10 +63,25 @@ const sample_02 = {
 const op = process.argv.pop();
 
 if (op === 'list') {
-    listFindings()
-        .then((data) => {
-            console.log(data);
-        });
+
+    const thisAccount = {
+        AwsAccountId: [{
+            Value: account.Account,
+            Comparison: 'EQUALS'
+        }]
+    };
+
+    const byTitle = {
+        Description: [{
+            Value: 'Vulnerability',
+            Comparison: 'CONTAINS'
+        }]
+    };
+
+    listFindings(thisAccount).then((data) => {
+        //listFindings(byTitle).then((data) => {
+        console.log(require('util').inspect(data, {depth:null}));
+    });
 } else {
     const findingsArray = [ sample_01, sample_02 ]
     

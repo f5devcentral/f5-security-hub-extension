@@ -16,17 +16,23 @@ const overbridgeImportPath = '/findings/import';
 //decribe findings, POST
 const overbridgeDescribePath = '/findings/describe';
 
-const credentials = require('./aws-token.json').Credentials;
+const default_cred = require('./aws-token.json').Credentials;
 
-const sigv4_opts = {
-    key: credentials.AccessKeyId,
-    secret: credentials.SecretAccessKey,
-    sessionToken: credentials.SessionToken,
-    protocol: 'https',
-    headers: {},
-    region: 'us-east-1',
-    query: 'X-Amz-Security-Token='+encodeURIComponent(credentials.SessionToken)
+var sigv4_opts;
+module.exports.sigv4_opts = sigv4_opts;
+function setCredentials(credentials) {
+    sigv4_opts =  {
+        key: credentials.AccessKeyId,
+        secret: credentials.SecretAccessKey,
+        sessionToken: credentials.SessionToken,
+        protocol: 'https',
+        headers: {},
+        region: 'us-east-1',
+        query: 'X-Amz-Security-Token='+encodeURIComponent(credentials.SessionToken)
+    };
 }
+module.exports.setCredentials = setCredentials;
+setCredentials(default_cred);
 
 function createHash(plaintext, cb) {
     const test = crypto.createHash('sha256');
@@ -88,16 +94,12 @@ function overbridgePromise(method, path, post_data) {
 };
 module.exports.overbridgePromise = overbridgePromise;
 
-function listFindings() {
+function listFindings(query) {
     const account = '001474472906';
     const findingsQuery = {
-        Filters: {
-            AwsAccountId: [{
-                Value: account,
-                Comparison: 'EQUALS'
-            }]
-        }
+        Filters: query
     }
+    console.log(require('util').inspect(findingsQuery, {depth:null}));
     return overbridgePromise('POST', overbridgeListPath, JSON.stringify(findingsQuery));
 }
 module.exports.listFindings = listFindings;
