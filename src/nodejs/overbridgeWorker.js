@@ -27,7 +27,7 @@ const affFromEvent = require('./translate.js').affFromEvent;
 
 function secretStuff(self) {
 
-    self.logger.fine('Fetchign secret...');
+    self.logger.fine('Renewing credentials');
 
     // Load the AWS SDK
     var AWS = require('aws-sdk'),
@@ -41,35 +41,10 @@ function secretStuff(self) {
         region: region
     });
 
-    // In this sample we only handle the specific exceptions for the 'GetSecretValue' API.
-    // See https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
-    // We rethrow the exception by default.
-
     client.getSecretValue({SecretId: secretName}, function(err, data) {
         if (err) {
-            if (err.code === 'DecryptionFailureException')
-                // Secrets Manager can't decrypt the protected secret text using the provided KMS key.
-                // Deal with the exception here, and/or rethrow at your discretion.
-                throw err;
-            else if (err.code === 'InternalServiceErrorException')
-                // An error occurred on the server side.
-                // Deal with the exception here, and/or rethrow at your discretion.
-                throw err;
-            else if (err.code === 'InvalidParameterException')
-                // You provided an invalid value for a parameter.
-                // Deal with the exception here, and/or rethrow at your discretion.
-                throw err;
-            else if (err.code === 'InvalidRequestException')
-                // You provided a parameter value that is not valid for the current state of the resource.
-                // Deal with the exception here, and/or rethrow at your discretion.
-                throw err;
-            else if (err.code === 'ResourceNotFoundException')
-                // We can't find the resource that you asked for.
-                // Deal with the exception here, and/or rethrow at your discretion.
-                throw err;
             self.logger.fine(err);
-        }
-        else {
+        } else {
             // Decrypts secret using the associated KMS CMK.
             // Depending on whether the secret is a string or binary, one of these fields will be populated.
             if ('SecretString' in data) {
@@ -83,18 +58,17 @@ function secretStuff(self) {
                 accessKeyId: raw.aws_access_key_id,
                 secretAccessKey: raw.aws_secret_access_key
             }
-            self.logger.fine(credentials);
             AWS.config = new AWS.Config(credentials);
             const stsClient = new AWS.STS({
                 region: region
             });
 
             stsClient.getSessionToken({}, (err, data) => {
-                if( err) self.logger.fine(err);
-                else self.logger.fine(JSON.stringify(data));
-
-                f5_overbridge.setCredentials(data.Credentials);
-                self.logger.fine(f5_overbridge.sigv4_opts);
+                if(err) self.logger.fine(err);
+                else {
+                    f5_overbridge.setCredentials(data.Credentials);
+                    self.logger.fine('Token refreshed');
+                }
             });
         }
 
@@ -117,6 +91,8 @@ function OverbridgeWorker() {
 OverbridgeWorker.prototype.WORKER_URI_PATH = "shared/overbridge";
 
 OverbridgeWorker.prototype.isPublic = true;
+
+OverbridgeWorker.prototype.storageUsesOdata = false;
 
 //OverbridgeWorker.prototype.isPersisted = true;
 //OverbridgeWorker.prototype.isStateRequiredOnStart = false;
@@ -225,34 +201,33 @@ OverbridgeWorker.prototype.onStart = function(success, error) {
             const start = new Date();
             f5_overbridge.importFindings(finding).then((data) => {
                 //this.logger.fine('event',event);
-                if (data.FailedCount || true) {
+                this.logger.fine('Overbridge Post:', data);
+                if (data.FailedCount) {
                     this.logger.fine(start, new Date());
-                    this.logger.fine('finding', util.inspect(finding, { depth: null }));
-                    this.logger.fine('response', data);
+                    this.logger.fine('Overbridge Failed finding:', util.inspect(finding, { depth: null }));
                 }
             });
         });
 
         socket.on('end', () => {
-           this.logger.fine('end disconnected ' + socket.remoteAddress);
+           this.logger.fine('Overbridge: BIG-IP disconnected ' + socket.remoteAddress);
         });
 
         socket.on('close', () => {
-            this.logger.fine('close disconnected ' + socket.remoteAddress);
+            this.logger.fine('Overbridge: BIG-IP disconnected ' + socket.remoteAddress);
         });
         socket.on('error', () => {
-            this.logger.fine('err disconnected ' + socket.remoteAddress);
+            this.logger.fine('Overbridge: BIG-IP isconnected ' + socket.remoteAddress);
         });
     });
 
     logForwarder.listen(8514);
 
 
-    try {
+    secretStuff(this);
+    setInterval(() => {
         secretStuff(this);
-    } catch (e) {
-        this.logger.fine(e);
-    }
+    }, 43000000);
 
     //if the logic in your onStart implementation encounters and error
     //then call the error callback function, otherwise call the success callback
