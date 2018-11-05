@@ -144,9 +144,9 @@ function affFromEvent(event) {
 
     const awsFinding = {
         SchemaVersion : '2018-10-08',
-        ProductArn : `arn:aws:overbridge:us-east-1:${account.Account}:provider:private/default`,
+        ProductArn : `arn:aws:overbridge:${account.Region}:${account.Account}:provider:private/default`,
         AwsAccountId : account.Account,
-        Id: `us-east-1/${account.Account}/${new Date().getTime()}`,
+        Id: `${account.Region}/${account.Account}/${new Date().getTime()}`,
         Types: getEventType(event.attack_type),
         CreatedAt: new Date(event.date_time),
         UpdatedAt: new Date(),

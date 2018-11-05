@@ -5,9 +5,14 @@ const crypto = require('crypto');
 const sigv4 = require('aws-signature-v4');
 
 //aws securityhub host
-const securityhubHostname = 'securityhub.us-east-1.amazonaws.com';
+var securityhubHostname = 'securityhub.us-east-1.amazonaws.com';
+var region = 'us-east-1';
+const regionCfg = (r) => {
+    securityhubHostname = `securityhub.${r}.amazonaws.com`;
+    region = r;
+}
 
-//
+//service string
 const serviceString = 'securityhub'
 
 //List Findings, GET
@@ -28,11 +33,24 @@ function setCredentials(credentials) {
         sessionToken: credentials.SessionToken,
         protocol: 'https',
         headers: {},
-        region: 'us-east-1',
+        region: region,
         query: 'X-Amz-Security-Token='+encodeURIComponent(credentials.SessionToken)
     };
 }
 module.exports.setCredentials = setCredentials;
+
+const setRegion = (new_region) => {
+
+    if( region === 'us-west-2' || region === 'us-east-1' ) {
+        regionCfg(new_region);
+        sigv4_opts.region = new_region;
+        return null;
+    } else {
+        return new Error('unsupported region: '+region);
+    }
+};
+module.exports.setRegion = setRegion;
+
 
 function createHash(plaintext, cb) {
     const test = crypto.createHash('sha256');

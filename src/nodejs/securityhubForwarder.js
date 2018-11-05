@@ -247,6 +247,9 @@ class SecurityHubForwarder extends EventEmitter {
                 }
             });
 
+            translate.setRegion(opts.Region);
+            securityhubCaller.setRegion(opts.Region);
+
             const result = this.filter.setFilter(opts.Filter);
             this.logger.fine('[SecurityHub] Current ruleset: '+JSON.stringify(result));
             return {
