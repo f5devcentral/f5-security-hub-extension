@@ -149,6 +149,11 @@ class AsmObjectFilter {
         });
         return this.filterRules;
     }
+
+    setFilter(filter) {
+        this.filterRules = filter;
+        return this.filterRules;
+    }
 }
 module.exports.AsmObjectFilter = AsmObjectFilter;
 

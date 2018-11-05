@@ -83,8 +83,21 @@ SecurityHubWorker.prototype.onGet = function(restOperation) {
  */
 SecurityHubWorker.prototype.onPost = function(restOperation) {
     this.logger.fine(restOperation.getBody());
-    this.forwarder.postFilterRules(JSON.parse(restOperation.getBody()));
-    restOperation.setBody(this.forwarder.getFilterRules());
+    const result = ((body) => {
+        try {
+            return this.forwarder.postFilterRules(JSON.parse(restOperation.getBody()));
+        } catch (e) {
+            return {
+                result: 'ERROR',
+                message: 'Invalid JSON Body: ' + e.message,
+            }
+        }
+    })(restOperation.getBody());
+
+    restOperation.setBody(result);
+    if( result.result === 'ERROR' ){
+        restOperation.setStatusCode(422);
+    }
     this.completeRestOperation(restOperation);
 };
 

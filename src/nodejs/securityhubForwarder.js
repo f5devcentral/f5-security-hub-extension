@@ -16,6 +16,8 @@ const translate = require('./translate.js');
 const affFromEvent = translate.affFromEvent,
       setAccount = translate.setAccount;
 
+const config = require('./configurationSchema.js');
+
 // not currently used. left behind for possible future use. user must create logging profile themselves
 function createLoggingProfile() {
     //use TMSH to create logging profile on the device
@@ -120,7 +122,7 @@ function refreshToken(self, fetchAccount) {
             if ('SecretString' in data) {
                 secret = data.SecretString;
             } else {
-                let buff = new Buffer(data.SecretBinary, 'base64');
+                var buff = new Buffer(data.SecretBinary, 'base64');
                 decodedBinarySecret = buff.toString('ascii');
             }
             const raw = JSON.parse(data.SecretString);
@@ -214,9 +216,24 @@ class SecurityHubForwarder extends EventEmitter {
     }
 
     postFilterRules(opts) {
-        this.logger.fine('[SecurityHub] attempting to add filter rule: ' + JSON.stringify(opts));
-        const result = this.filter.addRule(opts);
-        this.logger.fine('[SecurityHub] current ruleset: '+JSON.stringify(result));
+        this.logger.fine('[SecurityHub] attempting to process configuration: ' + JSON.stringify(opts, null, 2));
+        const valid = config.validate(opts);
+
+        if( !valid ) {
+            const result = config.errors();
+            this.logger.fine('[SecurityHub] Invalid configuration: ' + JSON.stringify(result, null, 2));
+            return {
+                result: 'ERROR',
+                message: result,
+            }
+        } else {
+            const result = this.filter.setFilter(opts.Filter);
+            this.logger.fine('[SecurityHub] Current ruleset: '+JSON.stringify(result));
+            return {
+                result: 'SUCCESS',
+                message: opts,
+            }
+        }
     }
 
 }
