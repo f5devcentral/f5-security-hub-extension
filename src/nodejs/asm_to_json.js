@@ -1,7 +1,10 @@
 'use strict';
 const net = require('net');
-const Transform = require('stream').Transform;
 const util = require('util');
+const stream = require('stream');
+const Transform = stream.Transform,
+      Writable = stream.Writable;
+
 
 const csvParse = require('csv-parse/lib/es5/sync');
 
@@ -86,12 +89,12 @@ const csv_fields =
     "x_forwarded_for_header_value"
 ]
 
-class AsmToJson extends Transform {
+class AsmToJson extends Writable {
     constructor(opts) {
         super(opts);
     }
 
-    _transform(data, encoding, callback) {
+    _write(data, encoding, callback) {
         
         const csv_line = data.toString().split(' ASM:').slice(1).join('');
         if( csv_line ) {
@@ -99,10 +102,10 @@ class AsmToJson extends Transform {
 ${csv_line}
 `
             const asm_json = csvParse(input, { columns: true });
-            callback(null, JSON.stringify(asm_json[0]));
-        } else {
-            callback();
+
+            this.emit('data', asm_json[0]);
         }
+        callback();
     }
 }
 
@@ -110,3 +113,42 @@ function AsmLogStream(socket) {
     return socket.pipe(new LineStream(null, '\r\n')).pipe(new AsmToJson());
 }
 module.exports.AsmLogStream = AsmLogStream;
+
+class AsmObjectFilter {
+    constructor(opts) {
+        this.filterRules = {};
+    }
+
+    isFiltered(logObject) {
+        return Object.keys(this.filterRules).some((key) => {
+            return this.filterRules[key].some((rule) => {
+                console.log(key, rule);
+                if( rule.Comparison === 'EQUALS') {
+                    return logObject[key] === rule.Value;
+                } else if (rule.Comparison === 'PREFIX') {
+                    return logObject[key].startsWith(rule.Value);
+                } else if (rule.Comparison === 'CONTAINS') {
+                    return logObject[key].includes(rule.Value);
+                }
+                return false;
+            });
+        });
+    }
+
+    addRule(ruleset) {
+        Object.keys(ruleset).forEach((key) => {
+            if( csv_fields.indexOf(key) < 0) {
+                return;
+            }
+
+            if (this.filterRules[key]) {
+                this.filterRules[key].concat(ruleset[key])
+            } else {
+                this.filterRules[key] = ruleset[key];
+            }
+        });
+        return this.filterRules;
+    }
+}
+module.exports.AsmObjectFilter = AsmObjectFilter;
+

@@ -53,36 +53,13 @@ OverbridgeWorker.prototype.onStart = function(success, error) {
     this.forwarder = new OverbridgeForwarder(this.logger);
     this.forwarder.listen(8514, (err) => {
         if (err) {
-            this.logger.severe("OverbridgeWorker onStart error: something went wrong");
+            this.logger.severe("[OverbridgeWorker] onStart error: something went wrong");
             error();
         } else {
-            this.logger.fine("OverbridgeWorker onStart success");
+            this.logger.fine("[OverbridgeWorker] onStart success");
             success();
         }
     });
-};
-
-/**
- * optional
- *
- * @description onStartCompleted is called after the dependencies are available
- * and state has been loaded from storage if worker is persisted with
- * isStateRequiredOnStart set to true. Framework will mark this worker available
- * to handle requests after success callback is called.
- *
- * @param {Function} success callback in case of success
- * @param {Function} error callback in case of error
- * @param {Object} state object loaded from storage
- * @param {Object|null} errMsg error from loading state from storage
- */
-OverbridgeWorker.prototype.onStartCompleted = function (success, error, state, errMsg) {
-    if (errMsg) {
-        this.logger.severe("OverbridgeWorker onStartCompleted error: something went wrong " + errMsg);
-        error();
-    }
-
-    this.logger.fine("OverbridgeWorker state loaded: " + JSON.stringify(state));
-    success();
 };
 
 /*****************
@@ -95,30 +72,8 @@ OverbridgeWorker.prototype.onStartCompleted = function (success, error, state, e
  * @param {Object} restOperation
  */
 OverbridgeWorker.prototype.onGet = function(restOperation) {
-    var oThis = this;
-
-    if (!this.state.content) {
-        restOperation.setBody(this.state);
-        this.completeRestOperation(restOperation);
-        return;
-    }
-
-    // Instead of returning what is in memory manually load the state
-    // from storage using helper provided by restWorker and send that
-    // in response
-    this.loadState(null,
-
-        function (err, state) {
-            if (err) {
-                this.logger.warning("[OverbridgeWorker] error loading state: %s", err.message);
-                restOperation.fail(err);
-                return;
-            }
-            restOperation.setBody(state);
-            oThis.completeRestOperation(restOperation);
-        }
-
-    );
+    restOperation.setBody(this.forwarder.getFilterRules());
+    this.completeRestOperation(restOperation);
 };
 
 /**
@@ -127,7 +82,9 @@ OverbridgeWorker.prototype.onGet = function(restOperation) {
  * @param {Object} restOperation
  */
 OverbridgeWorker.prototype.onPost = function(restOperation) {
-    this.state = restOperation.getBody();
+    this.logger.fine(restOperation.getBody());
+    this.forwarder.postFilterRules(JSON.parse(restOperation.getBody()));
+    restOperation.setBody(this.forwarder.getFilterRules());
     this.completeRestOperation(restOperation);
 };
 

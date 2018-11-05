@@ -8,9 +8,12 @@ const EventEmitter = require('events').EventEmitter;
 const aws = require('aws-sdk');
 
 const f5_overbridge = require('./f5_overbridge.js');
-const AsmLogStream = require('./asm_to_json.js').AsmLogStream;
+const asm_to_json = require('./asm_to_json.js')
+const AsmLogStream = asm_to_json.AsmLogStream,
+      AsmObjectFilter = asm_to_json.AsmObjectFilter;
 const affFromEvent = require('./translate.js').affFromEvent;
 
+// not currently used. left behind for possible future use. user must create logging profile themselves
 function createLoggingProfile() {
     //use TMSH to create logging profile on the device
     // tmsh command for setting up logging
@@ -95,7 +98,7 @@ function createLoggingProfile() {
 
 function refreshToken(self) {
 
-    self.logger.fine('Renewing credentials');
+    self.logger.fine('[Overbridge] Renewing AWS Token');
 
     // Load the AWS SDK
     var AWS = require('aws-sdk'),
@@ -135,7 +138,7 @@ function refreshToken(self) {
                 if(err) self.logger.fine(err);
                 else {
                     f5_overbridge.setCredentials(data.Credentials);
-                    self.logger.fine('Token refreshed');
+                    self.logger.fine('[Overbridge] AWS Token refreshed');
                 }
             });
         }
@@ -156,30 +159,35 @@ class OverbridgeForwarder extends EventEmitter {
         super();
         this.logger = logger;
         this.tokenRefreshInterval = startTokenRefresh(this);
+        this.filter = new AsmObjectFilter();
         this.logForwarder = new net.createServer((socket) => {
-            this.logger.fine(socket.remoteAddress + ' connected');
+            this.logger.fine('[Overbridge]' + socket.remoteAddress + ' connected');
             new AsmLogStream(socket).on('data', (data) => {
-                const event = JSON.parse(data);
-                const finding = affFromEvent(event);
+                if( !this.filter.isFiltered(data) ) {
+                    this.logger.fine('[Overbridge] ASM Log entry not sent as finding: sig_names="'+data.sig_names+'"');
+                    return;
+                }
+
+                const finding = affFromEvent(data);
                 const start = new Date();
                 f5_overbridge.importFindings(finding).then((data) => {
                     //this.logger.fine('event',event);
-                    this.logger.fine('Overbridge Post:', data);
+                    this.logger.fine('[Overbridge] AFF Post:', data);
                     if (data.FailedCount) {
-                        this.logger.fine('Overbridge Failed finding:', util.inspect(finding, { depth: null }));
+                        this.logger.fine('[Overbridge] Failed finding:', util.inspect(finding, { depth: null }));
                     }
                 });
             });
 
             socket.on('end', () => {
-                this.logger.fine('Overbridge: BIG-IP disconnected ' + socket.remoteAddress);
+                this.logger.fine('[Overbridge]: BIG-IP disconnected ' + socket.remoteAddress);
             });
 
             socket.on('close', () => {
-                this.logger.fine('Overbridge: BIG-IP disconnected ' + socket.remoteAddress);
+                this.logger.fine('[Overbridge]: BIG-IP disconnected ' + socket.remoteAddress);
             });
             socket.on('error', () => {
-                this.logger.fine('Overbridge: BIG-IP isconnected ' + socket.remoteAddress);
+                this.logger.fine('[Overbridge]: BIG-IP isconnected ' + socket.remoteAddress);
             });
         });
     }
@@ -189,6 +197,16 @@ class OverbridgeForwarder extends EventEmitter {
         this.logForwarder.listen(port, (err) => {
             if (cb) cb();
         });
+    }
+
+    getFilterRules() {
+        return this.filter.filterRules;
+    }
+
+    postFilterRules(opts) {
+        this.logger.fine('[Overbridge] attempting to add filter rule: ' + JSON.stringify(opts));
+        const result = this.filter.addRule(opts);
+        this.logger.fine('[Overbridge] current ruleset: '+JSON.stringify(result));
     }
 
 }
