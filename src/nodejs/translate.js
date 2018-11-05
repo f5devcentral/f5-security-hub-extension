@@ -94,7 +94,7 @@ const typeMapping = [
     { attack_type: 'Malicious File Upload',
       affType: 'Threat Detections/Execution',
       description: 'Malicious File Upload attacks attempt to exploit services by uploading files that may contain malicious code.' },
-    { attack_type: 'Non Browser Client',
+    { attack_type: 'Non-browser Client',
       affType: 'Threat Detections/Initial Access',
       description: 'Non Browser Client attacks use crawlers or other scripts to simulate human activity.' },
     { attack_type: 'Other application activity',
@@ -124,6 +124,13 @@ const typeMapping = [
 ];
 
 function getEventType(event) {
+    const asmtype = typeMapping.filter(x => event === x.attack_type).map(x => x.affType);
+    return [ 'Threat Detections', 'Effects', 'Unusual Behaviors' ]
+        .map(x => {
+            if( asmtype[0] && asmtype[0].indexOf(x) === 0 ) return asmtype[0];
+            else return x;
+        });
+
 }
 
 function affFromEvent(event) {
@@ -135,7 +142,7 @@ function affFromEvent(event) {
         ProductArn : `arn:aws:overbridge:us-east-1:${account.Account}:provider:private/default`,
         AwsAccountId : account.Account,
         Id: `us-east-1/${account.Account}/${new Date().getTime()}`,
-        Types: [ 'Threat Detections', 'Effects', 'Unusual Behaviors' ],
+        Types: getEventType(event.attack_type),
         CreatedAt: new Date(event.date_time),
         UpdatedAt: new Date(),
         Severity: {

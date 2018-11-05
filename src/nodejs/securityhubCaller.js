@@ -98,7 +98,7 @@ function listFindings(query) {
     const findingsQuery = {
         Filters: query
     }
-    console.log(require('util').inspect(findingsQuery, {depth:null}));
+    //console.log(require('util').inspect(findingsQuery, {depth:null}));
     return securityhubPromise('POST', securityhubListPath, JSON.stringify(findingsQuery));
 }
 module.exports.listFindings = listFindings;

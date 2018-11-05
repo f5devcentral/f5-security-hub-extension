@@ -122,7 +122,7 @@ class AsmObjectFilter {
     isFiltered(logObject) {
         return Object.keys(this.filterRules).some((key) => {
             return this.filterRules[key].some((rule) => {
-                console.log(key, rule);
+                //console.log(key, rule);
                 if( rule.Comparison === 'EQUALS') {
                     return logObject[key] === rule.Value;
                 } else if (rule.Comparison === 'PREFIX') {

@@ -91,7 +91,6 @@ function createLoggingProfile() {
         this.logger.fine(res.statusCode);
         res.on('data', (data) => {
             this.logger.fine(data.toString('utf8'));
-            console.log(data.toString('utf8'));
         });
     });
     pReq.write(JSON.stringify(postBody));
@@ -182,7 +181,7 @@ class SecurityHubForwarder extends EventEmitter {
                 const finding = affFromEvent(data);
                 const start = new Date();
                 securityhubCaller.importFindings(finding).then((data) => {
-                    //this.logger.fine('event',event);
+                    this.logger.fine('event',JSON.stringify(finding,2));
                     this.logger.fine('[SecurityHub] AFF Post:', data);
                     if (data.FailedCount) {
                         this.logger.fine('[SecurityHub] Failed finding:', util.inspect(finding, { depth: null }));
