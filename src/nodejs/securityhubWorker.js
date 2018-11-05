@@ -14,27 +14,27 @@
 */
 
 'use strict';
-const OverbridgeForwarder = require('./overbridgeForwarder.js');
+const SecurityHubForwarder = require('./securityhubForwarder.js');
 
 /**
- * @class OverbridgeWorker
+ * @class SecurityHubWorker
  * @mixes RestWorker
  *
  * @description Starts the remote logging endpoint to forward ASM
- *   remote logging messages to AWS Overbridge
+ *   remote logging messages to AWS SecurityHub
  */
-function OverbridgeWorker() {
+function SecurityHubWorker() {
     this.state = {};
 }
 
-OverbridgeWorker.prototype.WORKER_URI_PATH = "shared/overbridge";
+SecurityHubWorker.prototype.WORKER_URI_PATH = "shared/securityhub";
 
-OverbridgeWorker.prototype.isPublic = true;
+SecurityHubWorker.prototype.isPublic = true;
 
-OverbridgeWorker.prototype.storageUsesOdata = false;
+SecurityHubWorker.prototype.storageUsesOdata = false;
 
-//OverbridgeWorker.prototype.isPersisted = true;
-//OverbridgeWorker.prototype.isStateRequiredOnStart = false;
+//SecurityHubWorker.prototype.isPersisted = true;
+//SecurityHubWorker.prototype.isStateRequiredOnStart = false;
 
 /******************
  * startup events *
@@ -49,14 +49,14 @@ OverbridgeWorker.prototype.storageUsesOdata = false;
  * @param {Function} success callback in case of success
  * @param {Function} error callback in case of error
  */
-OverbridgeWorker.prototype.onStart = function(success, error) {
-    this.forwarder = new OverbridgeForwarder(this.logger);
+SecurityHubWorker.prototype.onStart = function(success, error) {
+    this.forwarder = new SecurityHubForwarder(this.logger);
     this.forwarder.listen(8514, (err) => {
         if (err) {
-            this.logger.severe("[OverbridgeWorker] onStart error: something went wrong");
+            this.logger.severe("[SecurityHubWorker] onStart error: something went wrong");
             error();
         } else {
-            this.logger.fine("[OverbridgeWorker] onStart success");
+            this.logger.fine("[SecurityHubWorker] onStart success");
             success();
         }
     });
@@ -71,7 +71,7 @@ OverbridgeWorker.prototype.onStart = function(success, error) {
  * handle onGet HTTP request
  * @param {Object} restOperation
  */
-OverbridgeWorker.prototype.onGet = function(restOperation) {
+SecurityHubWorker.prototype.onGet = function(restOperation) {
     restOperation.setBody(this.forwarder.getFilterRules());
     this.completeRestOperation(restOperation);
 };
@@ -81,7 +81,7 @@ OverbridgeWorker.prototype.onGet = function(restOperation) {
  * handle onPost HTTP request
  * @param {Object} restOperation
  */
-OverbridgeWorker.prototype.onPost = function(restOperation) {
+SecurityHubWorker.prototype.onPost = function(restOperation) {
     this.logger.fine(restOperation.getBody());
     this.forwarder.postFilterRules(JSON.parse(restOperation.getBody()));
     restOperation.setBody(this.forwarder.getFilterRules());
@@ -93,7 +93,7 @@ OverbridgeWorker.prototype.onPost = function(restOperation) {
  * handle onPut HTTP request
  * @param {Object} restOperation
  */
-OverbridgeWorker.prototype.onPut = function(restOperation) {
+SecurityHubWorker.prototype.onPut = function(restOperation) {
     this.state = restOperation.getBody();
     this.completeRestOperation(restOperation);
 };
@@ -104,7 +104,7 @@ OverbridgeWorker.prototype.onPut = function(restOperation) {
  * handle onPatch HTTP request
  * @param {Object} restOperation
  */
-OverbridgeWorker.prototype.onPatch = function(restOperation) {
+SecurityHubWorker.prototype.onPatch = function(restOperation) {
     this.state = restOperation.getBody();
     this.completeRestOperation(restOperation);
 };
@@ -115,10 +115,10 @@ OverbridgeWorker.prototype.onPatch = function(restOperation) {
  * handle onDelete HTTP request
  * @param {Object} restOperation
  */
-OverbridgeWorker.prototype.onDelete = function(restOperation) {
+SecurityHubWorker.prototype.onDelete = function(restOperation) {
     this.state = {};
     this.completeRestOperation(restOperation.setBody(this.state));
 };
 
 
-module.exports = OverbridgeWorker;
+module.exports = SecurityHubWorker;

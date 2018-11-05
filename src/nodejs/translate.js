@@ -1,4 +1,9 @@
-const account = require('./aws-account.json');
+const account = { Account: '111111111111' };
+
+const setAccount = (data) => {
+    account.Account = data.Account;
+};
+module.exports.setAccount = setAccount;
 
 const severityMap = (severity) => {
     const sevmap = {

@@ -5,20 +5,23 @@ const util = require('util');
 const http = require('http');
 const EventEmitter = require('events').EventEmitter;
 
-const aws = require('aws-sdk');
+// Load the AWS SDK
+var AWS = require('aws-sdk');
 
-const f5_overbridge = require('./f5_overbridge.js');
+const securityhubCaller = require('./securityhubCaller.js');
 const asm_to_json = require('./asm_to_json.js')
 const AsmLogStream = asm_to_json.AsmLogStream,
       AsmObjectFilter = asm_to_json.AsmObjectFilter;
-const affFromEvent = require('./translate.js').affFromEvent;
+const translate = require('./translate.js');
+const affFromEvent = translate.affFromEvent,
+      setAccount = translate.setAccount;
 
 // not currently used. left behind for possible future use. user must create logging profile themselves
 function createLoggingProfile() {
     //use TMSH to create logging profile on the device
     // tmsh command for setting up logging
     const create_log_profile_command =
-          [ 'create security log profile overbridge-logger application add { overbridge-logger-app { logger-type remote remote-storage remote format { field-delimiter , fields {',
+          [ 'create security log profile securityhub-logger application add { securityhub-logger-app { logger-type remote remote-storage remote format { field-delimiter , fields {',
             'attack_type',
             'blocking_exception_reason',
             'captcha_result',
@@ -96,16 +99,13 @@ function createLoggingProfile() {
 
 }
 
-function refreshToken(self) {
+function refreshToken(self, fetchAccount) {
 
-    self.logger.fine('[Overbridge] Renewing AWS Token');
+    self.logger.fine('[SecurityHub] Renewing AWS Token');
 
-    // Load the AWS SDK
-    var AWS = require('aws-sdk'),
-        region = "us-east-1",
-        secretName = "f5/overbridge/aws_credentials",
-        secret,
-        decodedBinarySecret;
+    const region = "us-east-1",
+          secretName = "f5/securityhub/aws_credentials";
+    var secret, decodedBinarySecret;
 
     // Create a Secrets Manager client
     var client = new AWS.SecretsManager({
@@ -134,11 +134,22 @@ function refreshToken(self) {
                 region: region
             });
 
+            if (fetchAccount) {
+                stsClient.getCallerIdentity({}, (err, data) => {
+                    if(err) self.logger.fine(err);
+                    else {
+                        self.logger.fine('[SecurityHub] Account Identified');
+                        self.logger.fine('[SecurityHub] '+JSON.stringify(data));
+                        setAccount(data);
+                    }
+                });
+            }
+
             stsClient.getSessionToken({}, (err, data) => {
                 if(err) self.logger.fine(err);
                 else {
-                    f5_overbridge.setCredentials(data.Credentials);
-                    self.logger.fine('[Overbridge] AWS Token refreshed');
+                    securityhubCaller.setCredentials(data.Credentials);
+                    self.logger.fine('[SecurityHub] AWS Token refreshed');
                 }
             });
         }
@@ -147,53 +158,53 @@ function refreshToken(self) {
 }
 
 function startTokenRefresh(self) {
-    refreshToken(self);
+    refreshToken(self, true);
     return setInterval(() => {
-        refreshToken(self);
+        refreshToken(self, false);
     }, 43000000);
 }
 
 
-class OverbridgeForwarder extends EventEmitter {
+class SecurityHubForwarder extends EventEmitter {
     constructor(logger) {
         super();
         this.logger = logger;
         this.tokenRefreshInterval = startTokenRefresh(this);
         this.filter = new AsmObjectFilter();
         this.logForwarder = new net.createServer((socket) => {
-            this.logger.fine('[Overbridge]' + socket.remoteAddress + ' connected');
+            this.logger.fine('[SecurityHub]' + socket.remoteAddress + ' connected');
             new AsmLogStream(socket).on('data', (data) => {
                 if( !this.filter.isFiltered(data) ) {
-                    this.logger.fine('[Overbridge] ASM Log entry not sent as finding: sig_names="'+data.sig_names+'"');
+                    this.logger.fine('[SecurityHub] ASM Log entry not sent as finding: sig_names="'+data.sig_names+'"');
                     return;
                 }
 
                 const finding = affFromEvent(data);
                 const start = new Date();
-                f5_overbridge.importFindings(finding).then((data) => {
+                securityhubCaller.importFindings(finding).then((data) => {
                     //this.logger.fine('event',event);
-                    this.logger.fine('[Overbridge] AFF Post:', data);
+                    this.logger.fine('[SecurityHub] AFF Post:', data);
                     if (data.FailedCount) {
-                        this.logger.fine('[Overbridge] Failed finding:', util.inspect(finding, { depth: null }));
+                        this.logger.fine('[SecurityHub] Failed finding:', util.inspect(finding, { depth: null }));
                     }
                 });
             });
 
             socket.on('end', () => {
-                this.logger.fine('[Overbridge]: BIG-IP disconnected ' + socket.remoteAddress);
+                this.logger.fine('[SecurityHub]: BIG-IP disconnected ' + socket.remoteAddress);
             });
 
             socket.on('close', () => {
-                this.logger.fine('[Overbridge]: BIG-IP disconnected ' + socket.remoteAddress);
+                this.logger.fine('[SecurityHub]: BIG-IP disconnected ' + socket.remoteAddress);
             });
             socket.on('error', () => {
-                this.logger.fine('[Overbridge]: BIG-IP isconnected ' + socket.remoteAddress);
+                this.logger.fine('[SecurityHub]: BIG-IP isconnected ' + socket.remoteAddress);
             });
         });
     }
     
     listen(port, cb) {
-        //start the overbridge remote log forwarder
+        //start the securityhub remote log forwarder
         this.logForwarder.listen(port, (err) => {
             if (cb) cb();
         });
@@ -204,10 +215,10 @@ class OverbridgeForwarder extends EventEmitter {
     }
 
     postFilterRules(opts) {
-        this.logger.fine('[Overbridge] attempting to add filter rule: ' + JSON.stringify(opts));
+        this.logger.fine('[SecurityHub] attempting to add filter rule: ' + JSON.stringify(opts));
         const result = this.filter.addRule(opts);
-        this.logger.fine('[Overbridge] current ruleset: '+JSON.stringify(result));
+        this.logger.fine('[SecurityHub] current ruleset: '+JSON.stringify(result));
     }
 
 }
-module.exports = OverbridgeForwarder;
+module.exports = SecurityHubForwarder;
