@@ -1,5 +1,6 @@
 'use strict';
 
+const fs = require('fs');
 const net = require('net');
 const util = require('util');
 const http = require('http');
@@ -165,6 +166,7 @@ function startTokenRefresh(self) {
     }, 43000000);
 }
 
+const configPath = '/var/config/rest/iapps/f5-securityhub/configuration.json';
 
 class SecurityHubForwarder extends EventEmitter {
     constructor(logger) {
@@ -202,6 +204,15 @@ class SecurityHubForwarder extends EventEmitter {
                 this.logger.fine('[SecurityHub]: BIG-IP isconnected ' + socket.remoteAddress);
             });
         });
+
+        fs.readFile(configPath, (err, data) => {
+            if (err) {
+                this.logger.fine(err);
+            } else {
+                this.postFilterRules(JSON.parse(data));
+                this.logger.fine('[SecurityHub] Configuration loaded from '+configPath);
+            }
+        });
     }
     
     listen(port, cb) {
@@ -227,6 +238,15 @@ class SecurityHubForwarder extends EventEmitter {
                 message: result,
             }
         } else {
+            fs.writeFile(configPath, JSON.stringify(opts, null, 2), (err) => {
+                if (err) {
+                    this.logger.fine('[SecurityHub] ERROR: Cannot write configuration to '+configPath);
+                    this.logger.fine(err);
+                } else {
+                    this.logger.fine('[SecurityHub] Configuration updated at '+configPath);
+                }
+            });
+
             const result = this.filter.setFilter(opts.Filter);
             this.logger.fine('[SecurityHub] Current ruleset: '+JSON.stringify(result));
             return {

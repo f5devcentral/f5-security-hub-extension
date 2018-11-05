@@ -90,7 +90,7 @@ SecurityHubWorker.prototype.onPost = function(restOperation) {
             return {
                 result: 'ERROR',
                 message: 'Invalid JSON Body: ' + e.message,
-            }
+            };
         }
     })(restOperation.getBody());
 

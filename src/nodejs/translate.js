@@ -1,9 +1,14 @@
-const account = { Account: '111111111111' };
+const account = { Account: '111111111111', Region: 'us-east-1' };
 
 const setAccount = (data) => {
     account.Account = data.Account;
 };
 module.exports.setAccount = setAccount;
+
+const setRegion = (region) => {
+    account.Region = region;
+}
+module.exports.setRegion = setRegion;
 
 const severityMap = (severity) => {
     const sevmap = {
