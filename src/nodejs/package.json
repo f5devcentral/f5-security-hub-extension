@@ -1,0 +1,24 @@
+{
+  "name": "f5-securityhub",
+  "version": "1.0.0",
+  "description": "Receives ASM remote logs and imports them to AWS Overbridge",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "creds": "aws sts get-session-token > aws-token.json;aws sts get-caller-identity > aws-account.json"
+  },
+  "keywords": [
+    "f5",
+    "aws",
+    "securityhub",
+    "asm"
+  ],
+  "author": "Matthew Zinke <m.zinke@f5.com>",
+  "license": "ISC",
+  "dependencies": {
+    "ajv": "^6.5.5",
+    "aws-sdk": "^2.342.0",
+    "aws-signature-v4": "^1.2.1",
+    "csv-parse": "^3.1.3"
+  }
+}

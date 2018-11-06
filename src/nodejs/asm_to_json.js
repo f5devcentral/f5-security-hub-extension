@@ -1,7 +1,12 @@
+'use strict';
 const net = require('net');
-const { Transform } = require('stream');
-
 const util = require('util');
+const stream = require('stream');
+const Transform = stream.Transform,
+      Writable = stream.Writable;
+
+
+const csvParse = require('csv-parse/lib/es5/sync');
 
 class LineStream extends Transform {
     /**
@@ -15,7 +20,7 @@ class LineStream extends Transform {
 
     _transform(data, encoding, callback) {
         const input = this.buffer + data.toString('utf8');
-        const lines = input.split('\n');
+        const lines = input.split(this.linebreak);
         this.buffer = lines.pop();
         while (lines.length > 0) {
             const line = lines.shift();
@@ -84,46 +89,71 @@ const csv_fields =
     "x_forwarded_for_header_value"
 ]
 
-
-const severityMap = (severity) => {
-    const sevmap = {
-        "Informational": 0,
-        "Critical": 90,
-        "Error": 100
-    };
-    if (sevmap[severity] !== undefined) return sevmap[severity]
-    else return 99;
-};
-
-const aff_namespace_enum = [ "Software and Configuration Checks",
-                             "Threat Detections",
-                             "Effects",
-                             "Unusual Behaviors",
-                             "Sensitive Data Identifications" ]
-
-class AsmToJson extends Transform {
+class AsmToJson extends Writable {
     constructor(opts) {
         super(opts);
     }
 
-    _transform(data, encoding, callback) {
+    _write(data, encoding, callback) {
         
         const csv_line = data.toString().split(' ASM:').slice(1).join('');
         if( csv_line ) {
-            const csv_array = csv_line.slice(1, csv_line.length-2).split('","');
-            const asm_json = {};
-            csv_fields.forEach((key) => {
-                const val = csv_array.shift();
-                asm_json[key] = val;
-            });
-            callback(null, JSON.stringify(asm_json));
-        } else {
-            callback();
+            const input = `${csv_fields.join(',')}
+${csv_line}
+`
+            const asm_json = csvParse(input, { columns: true });
+
+            this.emit('data', asm_json[0]);
         }
+        callback();
     }
 }
 
 function AsmLogStream(socket) {
-    return socket.pipe(new LineStream()).pipe(new AsmToJson());
+    return socket.pipe(new LineStream(null, '\r\n')).pipe(new AsmToJson());
 }
 module.exports.AsmLogStream = AsmLogStream;
+
+class AsmObjectFilter {
+    constructor(opts) {
+        this.filterRules = {};
+    }
+
+    isFiltered(logObject) {
+        return Object.keys(this.filterRules).some((key) => {
+            return this.filterRules[key].some((rule) => {
+                //console.log(key, rule);
+                if( rule.Comparison === 'EQUALS') {
+                    return logObject[key] === rule.Value;
+                } else if (rule.Comparison === 'PREFIX') {
+                    return logObject[key].startsWith(rule.Value);
+                } else if (rule.Comparison === 'CONTAINS') {
+                    return logObject[key].includes(rule.Value);
+                }
+                return false;
+            });
+        });
+    }
+
+    addRule(ruleset) {
+        Object.keys(ruleset).forEach((key) => {
+            if( csv_fields.indexOf(key) < 0) {
+                return;
+            }
+
+            if (this.filterRules[key]) {
+                this.filterRules[key].concat(ruleset[key])
+            } else {
+                this.filterRules[key] = ruleset[key];
+            }
+        });
+        return this.filterRules;
+    }
+
+    setFilter(filter) {
+        this.filterRules = filter;
+        return this.filterRules;
+    }
+}
+module.exports.AsmObjectFilter = AsmObjectFilter;
+
