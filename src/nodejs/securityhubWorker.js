@@ -14,7 +14,9 @@
 */
 
 'use strict';
-const SecurityHubForwarder = require('./securityhubForwarder.js');
+const shf = require('./securityhubForwarder.js');
+const SecurityHubForwarder = shf.SecurityHubForwarder;
+const createLoggingProfile = shf.createLoggingProfile;
 
 /**
  * @class SecurityHubWorker
@@ -50,6 +52,12 @@ SecurityHubWorker.prototype.storageUsesOdata = false;
  * @param {Function} error callback in case of error
  */
 SecurityHubWorker.prototype.onStart = function(success, error) {
+    this.logger.fine(JSON.stringify(this.state));
+    this.state.test = 'test';
+
+    createLoggingProfile((data) => {
+        this.logger.fine(data);
+    });
     this.forwarder = new SecurityHubForwarder(this.logger);
     this.forwarder.listen(8514, (err) => {
         if (err) {

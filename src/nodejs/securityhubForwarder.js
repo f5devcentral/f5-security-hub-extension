@@ -20,7 +20,7 @@ const affFromEvent = translate.affFromEvent,
 const config = require('./configurationSchema.js');
 
 // not currently used. left behind for possible future use. user must create logging profile themselves
-function createLoggingProfile() {
+function createLoggingProfile(cb) {
     //use TMSH to create logging profile on the device
     // tmsh command for setting up logging
     const create_log_profile_command =
@@ -82,7 +82,7 @@ function createLoggingProfile() {
         port: '8100',
         path: '/mgmt/tm/util/bash',
         method: 'POST',
-        auth: 'admin:f5p4ssw0rd!'
+        auth: 'admin:'
     };
 
     const postBody = {
@@ -91,15 +91,15 @@ function createLoggingProfile() {
     };
 
     const pReq = http.request(httpOpts, (res) => {
-        this.logger.fine(res.statusCode);
         res.on('data', (data) => {
-            this.logger.fine(data.toString('utf8'));
+            if (cb) cb(data.toString('utf8'));
         });
     });
     pReq.write(JSON.stringify(postBody));
     pReq.end();
 
 }
+module.exports.createLoggingProfile = createLoggingProfile;
 
 function refreshToken(self, fetchAccount) {
 
@@ -260,4 +260,4 @@ class SecurityHubForwarder extends EventEmitter {
     }
 
 }
-module.exports = SecurityHubForwarder;
+module.exports.SecurityHubForwarder = SecurityHubForwarder;
