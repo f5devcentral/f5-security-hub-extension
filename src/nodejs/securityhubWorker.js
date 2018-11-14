@@ -52,9 +52,6 @@ SecurityHubWorker.prototype.storageUsesOdata = false;
  * @param {Function} error callback in case of error
  */
 SecurityHubWorker.prototype.onStart = function(success, error) {
-    this.logger.fine(JSON.stringify(this.state));
-    this.state.test = 'test';
-
     createLoggingProfile((data) => {
         this.logger.fine(data);
     });

@@ -104,7 +104,7 @@ module.exports.createLoggingProfile = createLoggingProfile;
 function refreshToken(self, fetchAccount) {
 
     self.logger.fine('[SecurityHub] Renewing AWS Token');
-
+    /*
     const region = "us-east-1",
           secretName = "f5/securityhub/aws_credentials";
     var secret, decodedBinarySecret;
@@ -147,6 +147,7 @@ function refreshToken(self, fetchAccount) {
                 });
             }
 
+
             stsClient.getSessionToken({}, (err, data) => {
                 if(err) self.logger.fine(err);
                 else {
@@ -154,9 +155,63 @@ function refreshToken(self, fetchAccount) {
                     self.logger.fine('[SecurityHub] AWS Token refreshed');
                 }
             });
-        }
 
+        }
     });
+
+    */
+    
+    //http://169.254.169.254/latest/meta-data/iam/security-credentials/BIGIPSecurityHubRole
+    const http_opts = {
+        host: '169.254.169.254',
+        path: '/latest/meta-data/iam/security-credentials/BIGIPSecurityHubRole',
+        method: 'GET'
+    }
+    
+    const req = http.request(http_opts, (res) => {
+        const buffer = [];
+        res.on('data', (data) => {
+            buffer.push(data.toString('utf8'))
+        });
+        res.on('end', () => {
+            const data = buffer.join('');
+            if( res.statusCode != 200 ) {
+                self.logger.fine('ERROR: Non 200 status code recievd when fetching credentials');
+                self.logger.fine(data);
+                return;
+            }
+
+            self.logger.fine(data);
+            const credentials = JSON.parse(data);
+            self.logger.fine(credentials);
+            securityhubCaller.setCredentials(credentials);
+
+            AWS.config = new AWS.Config(credentials);
+            const stsClient = new AWS.STS({
+                region: securityhubCaller.getRegion()
+            });
+
+            if (fetchAccount) {
+                stsClient.getCallerIdentity({}, (err, data) => {
+                    if(err) self.logger.fine(err);
+                    else {
+                        self.logger.fine('[SecurityHub] Account Identified');
+                        self.logger.fine('[SecurityHub] '+JSON.stringify(data));
+                        setAccount(data);
+                    }
+                });
+            }
+            
+        });
+    });
+
+    req.on('error', (err) => {
+        self.logger.fine('theres been an error');
+        self.logger.fine(err);
+    });
+
+    req.end();
+    
 }
 
 function startTokenRefresh(self) {
@@ -176,7 +231,8 @@ class SecurityHubForwarder extends EventEmitter {
         this.filter = new AsmObjectFilter();
         this.logForwarder = new net.createServer((socket) => {
             this.logger.fine('[SecurityHub]' + socket.remoteAddress + ' connected');
-            new AsmLogStream(socket).on('data', (data) => {
+            const logstream = new AsmLogStream(socket);
+            logstream.on('data', (data) => {
                 if( !this.filter.isFiltered(data) ) {
                     this.logger.fine('[SecurityHub] ASM Log entry not sent as finding: sig_names="'+data.sig_names+'"');
                     return;
@@ -191,6 +247,12 @@ class SecurityHubForwarder extends EventEmitter {
                         this.logger.fine('[SecurityHub] Failed finding:', util.inspect(finding, { depth: null }));
                     }
                 });
+            });
+
+            logstream.on('parse_error', (e) => {
+                this.logger.fine('error');
+                this.logger.fine(e);
+                this.logger.fine(e.input);
             });
 
             socket.on('end', () => {
@@ -249,6 +311,7 @@ class SecurityHubForwarder extends EventEmitter {
 
             translate.setRegion(opts.Region);
             securityhubCaller.setRegion(opts.Region);
+            refreshToken(this, true);
 
             const result = this.filter.setFilter(opts.Filter);
             this.logger.fine('[SecurityHub] Current ruleset: '+JSON.stringify(result));

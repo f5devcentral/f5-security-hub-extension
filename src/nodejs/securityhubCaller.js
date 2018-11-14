@@ -27,14 +27,17 @@ const securityhubDescribePath = '/findings/describe';
 var sigv4_opts;
 module.exports.sigv4_opts = sigv4_opts;
 function setCredentials(credentials) {
+
+    const token = credentials.SessionToken || credentials.Token;
+
     sigv4_opts =  {
         key: credentials.AccessKeyId,
         secret: credentials.SecretAccessKey,
-        sessionToken: credentials.SessionToken,
+        sessionToken: token,
         protocol: 'https',
         headers: {},
         region: region,
-        query: 'X-Amz-Security-Token='+encodeURIComponent(credentials.SessionToken)
+        query: 'X-Amz-Security-Token='+encodeURIComponent(token)
     };
 }
 module.exports.setCredentials = setCredentials;
@@ -51,6 +54,8 @@ const setRegion = (new_region) => {
 };
 module.exports.setRegion = setRegion;
 
+const getRegion = () => region;
+module.exports.getRegion = getRegion;
 
 function createHash(plaintext, cb) {
     const test = crypto.createHash('sha256');

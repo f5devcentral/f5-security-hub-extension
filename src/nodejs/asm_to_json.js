@@ -101,9 +101,13 @@ class AsmToJson extends Writable {
             const input = `${csv_fields.join(',')}
 ${csv_line}
 `
-            const asm_json = csvParse(input, { columns: true });
-
-            this.emit('data', asm_json[0]);
+            try {
+                const asm_json = csvParse(input, { columns: true });
+                this.emit('data', asm_json[0]);
+            } catch(e) {
+                e.input = input;
+                this.emit('parse_error', e);
+            }
         }
         callback();
     }
