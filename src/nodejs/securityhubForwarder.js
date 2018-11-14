@@ -181,9 +181,9 @@ function refreshToken(self, fetchAccount) {
                 return;
             }
 
-            self.logger.fine(data);
+            self.logger.fine('Security Token Fetched');
             const credentials = JSON.parse(data);
-            self.logger.fine(credentials);
+            //self.logger.fine(credentials);
             securityhubCaller.setCredentials(credentials);
 
             AWS.config = new AWS.Config(credentials);
@@ -196,7 +196,7 @@ function refreshToken(self, fetchAccount) {
                     if(err) self.logger.fine(err);
                     else {
                         self.logger.fine('[SecurityHub] Account Identified');
-                        self.logger.fine('[SecurityHub] '+JSON.stringify(data));
+                        //self.logger.fine('[SecurityHub] '+JSON.stringify(data));
                         setAccount(data);
                     }
                 });
@@ -218,7 +218,7 @@ function startTokenRefresh(self) {
     refreshToken(self, true);
     return setInterval(() => {
         refreshToken(self, false);
-    }, 43000000);
+    }, 28800000);
 }
 
 const configPath = '/var/config/rest/iapps/f5-securityhub/configuration.json';
