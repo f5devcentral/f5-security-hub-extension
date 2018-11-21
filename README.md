@@ -1,14 +1,14 @@
-# F5 Security Hub Connector (F5 Overbridge)
+# F5 Security Hub Extension
 
 ## Introduction
 
-The F5 Security Hub Connector is a BIG-IP iControl LX Extension for posting ASM log events to AWS Security Hub. AWS Security Hub provides a datebase and dashboard for managing security event notifations across an AWS Cloud Deployment.
+The F5 Security Hub Extension is a BIG-IP iControl LX Extension for posting ASM log events to AWS Security Hub. AWS Security Hub provides a datebase and dashboard for managing security event notifations across an AWS Cloud Deployment.
 
 This extension is currently in beta.
 
 ## Requirements
 
-BIG-IP VE 13.1 running on EC2
+BIG-IP VE 13.1 or later running on EC2
 
 ## Docs
 
