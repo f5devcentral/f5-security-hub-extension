@@ -14,7 +14,9 @@
 */
 
 'use strict';
-const SecurityHubForwarder = require('./securityhubForwarder.js');
+const shf = require('./securityhubForwarder.js');
+const SecurityHubForwarder = shf.SecurityHubForwarder;
+const createLoggingProfile = shf.createLoggingProfile;
 
 /**
  * @class SecurityHubWorker
@@ -50,6 +52,9 @@ SecurityHubWorker.prototype.storageUsesOdata = false;
  * @param {Function} error callback in case of error
  */
 SecurityHubWorker.prototype.onStart = function(success, error) {
+    createLoggingProfile((data) => {
+        this.logger.fine(data);
+    });
     this.forwarder = new SecurityHubForwarder(this.logger);
     this.forwarder.listen(8514, (err) => {
         if (err) {
@@ -84,8 +89,11 @@ SecurityHubWorker.prototype.onGet = function(restOperation) {
 SecurityHubWorker.prototype.onPost = function(restOperation) {
     this.logger.fine(restOperation.getBody());
     const result = ((body) => {
+        if( body instanceof Object )
+            return this.forwarder.postFilterRules(body);
+
         try {
-            return this.forwarder.postFilterRules(JSON.parse(restOperation.getBody()));
+            return this.forwarder.postFilterRules(JSON.parse(body));
         } catch (e) {
             return {
                 result: 'ERROR',
@@ -94,9 +102,14 @@ SecurityHubWorker.prototype.onPost = function(restOperation) {
         }
     })(restOperation.getBody());
 
-    restOperation.setBody(result);
     if( result.result === 'ERROR' ){
         restOperation.setStatusCode(422);
+        restOperation.setBody({
+            code: 422,
+            message: result.message,
+        });
+    } else {
+        restOperation.setBody(result);
     }
     this.completeRestOperation(restOperation);
 };

@@ -27,21 +27,40 @@ const securityhubDescribePath = '/findings/describe';
 var sigv4_opts;
 module.exports.sigv4_opts = sigv4_opts;
 function setCredentials(credentials) {
+
+    const token = credentials.SessionToken || credentials.Token;
+
     sigv4_opts =  {
         key: credentials.AccessKeyId,
         secret: credentials.SecretAccessKey,
-        sessionToken: credentials.SessionToken,
+        sessionToken: token,
         protocol: 'https',
         headers: {},
         region: region,
-        query: 'X-Amz-Security-Token='+encodeURIComponent(credentials.SessionToken)
+        query: 'X-Amz-Security-Token='+encodeURIComponent(token)
     };
 }
 module.exports.setCredentials = setCredentials;
 
 const setRegion = (new_region) => {
 
-    if( region === 'us-west-2' || region === 'us-east-1' ) {
+    const supported = [ 'us-east-1',
+                        'us-west-1',
+                        'us-west-2',
+                        'ap-south-1',
+                        'ap-northeast-2',
+                        'ap-southeast-1',
+                        'ap-southeast-2',
+                        'ap-northeast-1',
+                        'ca-central-1',
+                        'eu-central-1',
+                        'eu-west-1',
+                        'eu-west-2',
+                        'eu-west-3',
+                        'sa-east-1',
+                      ];
+
+    if( supported.some((e) => region === e )) {
         regionCfg(new_region);
         sigv4_opts.region = new_region;
         return null;
@@ -51,6 +70,8 @@ const setRegion = (new_region) => {
 };
 module.exports.setRegion = setRegion;
 
+const getRegion = () => region;
+module.exports.getRegion = getRegion;
 
 function createHash(plaintext, cb) {
     const test = crypto.createHash('sha256');

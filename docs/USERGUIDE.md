@@ -4,7 +4,7 @@
 
 F5 Security Hub is a BIG-IP iControl LX Extension for posting ASM log events to AWS Security Hub. AWS Security Hub provides a database and dashboard for managing security event notifications across an AWS Cloud Deployment.
 
-This extension is currently in beta.
+This release is community supported, please provide feedback via [DevCentral](https://devcentral.f5.com/questions?tag=aws) (https://devcentral.f5.com/questions?tag=aws).
 
 ## Requirements
 
@@ -12,55 +12,33 @@ BIG-IP VE 13.1 running in AWS EC2
 
 ## Installation
 
-### Credential and Permissions Manangement
-
-Before getting started, you will want AWS credentials available that have permissions to STS (for token creation). These credentials will get stored in AWS Secret Manager for use by the BIG-IP Security Hub Extension. The extension will use these credentials to generate a token every 12 hours for posting to Security Hub. Credentials are required due to the nature of Security Hub's Sigv4 auth mechanism. The BIG-IP will need an IAM role created as well to get access to Secret Manager.
-
-#### 1. AWS Secrets Manager
-
-https://aws.amazon.com/secrets-manager/
-
-Click 'Get started with AWS Secrets Manager' and create a new secret by clicking the button 'Store a new secret' in the top right.
-
-* For secret type, Select 'other type of secrets'
-* Create 2 keys and enter the associated AWS credential string for their values
-
-  `aws_secret_access_key`
-
-  `aws_access_key_id`
-
-Click 'next'
-
-A form should be visible to store the name of your secret and a description. The secret must be named `f5/securityhub/aws_credentials`.
-
-Click 'next'
-
-The default settings should be acceptable, keep 'disable automatic rotation' selected and hit 'next'.
-
-The review screen will be presented, once the 'Store' button is clicked, your aws credentials will be stored in a way accessible to the app.
-
-
-#### 2. IAM Role Creation
+#### 1. IAM Role Creation
 
 https://aws.amazon.com/iam/
 
-Create an IAM Role for your EC2 instance that gives Read access to AWS Secrets Manager (SecretsManagerReadWrite)
+Create an IAM Role for your EC2 instance that gives SecurityHub access, name this role "BIGIPSecurityHubRole"
 
 Attach this IAM role to any EC2 Instance running the BIG-IP VE that you'd like to use Security Hub with.
 
 
-#### 3. Installation of F5 Security Hub  RPM
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": "securityhub:*",
+            "Resource": "*"
+        }
+    ]
+}
+```
 
-Download the RPM to your local machine
+#### 2. Installation of F5 Security Hub  RPM
 
-Login to the bash shell on BIG-IP and enter the following command to enable iControl LX Extensions:
+Download the RPM to the local machine you will access the BIG-IP GUI from.
 
-`touch /var/config/rest/iapps/enable`
-
-(If you want, you can create the SecurityHub logger at this time, as well. The command is listed in next section)
-
-
-Log in to the BIG-IP GUI and goto iApps > Package Management LX. (If this option doesn't appear after following the previous command, restart BIG-IP)
+Log in to the BIG-IP GUI and goto _iApps > Package Management LX_.
 
 At the top right, click 'Import'
 
@@ -69,21 +47,31 @@ Click 'Choose File' and navigate to your local copy of the F5 Security Hub  RPM.
 This will upload the file and install the extension. Note, the extension must be configured before it will send any events to Security Hub.
 
 
-#### 4. BIG-IP Configuration
+_If the package Management LX menu item is not present..._
 
-##### Create Logging Profile
+Login to the bash shell on BIG-IP and enter the following command to enable iControl LX Extensions:
 
-The following command can be used on BIG-IP to properly set up the logger. It is important that no logging fields are added or removed. At the time, the securityhub transform function supports only this list of logging attributes.
+`touch /var/config/rest/iapps/enable`
 
-`create security log profile securityhub-logger application add { securityhub-logger-app { logger-type remote remote-storage remote format { field-delimiter , fields { attack_type blocking_exception_reason captcha_result client_type date_time dest_ip dest_port device_id geo_location http_class_name ip_address_intelligence ip_client ip_with_route_domain is_truncated login_result management_ip_address method mobile_application_name mobile_application_version policy_apply_date policy_name protocol query_string request request_status response response_code route_domain session_id severity sig_ids sig_names sig_set_names src_port staged_sig_ids staged_sig_names staged_sig_set_names sub_violations support_id unit_hostname uri username violation_details violation_rating violations virus_name websocket_direction websocket_message_type x_forwarded_for_header_value } } servers add { 127.0.0.1:3000 } format { field-format none } } }`
+Now restart BIG-IP, and the Package Management LX option should be available.
 
-This will create a remote logging profile called `securityhub-logger` that will connect to the Security Hub Extension to forward log messages.
+#### 3. BIG-IP Configuration
+
+##### The Logging Profile
+
+Installing the extension will create a remote logging profile called `securityhub-logger` that will connect to the Security Hub Extension to forward log messages.
 
 ##### Attach Logging Profile to Virtual Servers
 
-Go on the big ip and attach this logging profile to any virtual servers that have ASM profiles you want to track with Security Hub. 
+Go on the BIG-IP and attach this logging profile to any virtual servers that have ASM profiles you want to track with Security Hub. 
 
-Once this is set up, you can configure teh Security Hub Extension to send the messages you want to overbridge.
+To do this, select _Local Traffic > Virtual Servers > Virtual Server List_ and a list of virtual servers should appear.
+
+Pick the virtual server you want to connect to Security Hub, and select _Security > Policies_ from the top menu. Note this is the same menu used to apply a WAF configuration.
+
+For Log Profile, select "enabled", select "securityhub-logger" on the left side list, and click the move left icon (```<<```). Now click 'update'.
+
+Once this is set up, you can configure the extension to send only the messages you want to AWS Security Hub. By default, no messages will be sent to Security Hub.
 
 # Configuring F5 Security Hub 
 
@@ -139,18 +127,16 @@ Our example post body looks just like the example GET response:
 
 ```
 
-
-
-
 ## Filters
 
 F5-SHC will not post any findings to Security Hub by default. Configurating passthrough filters will allow ASM events in the log to get posted to securityhub. The following properties are logged by ASMs logger:
 
 ```
 attack_type             blocking_exception_reason       captcha_result client_type
-date_time dest_ip       dest_port                       device_id
-geo_location            http_class_name                 ip_address_intelligence ip_client
-ip_with_route_domain    is_truncated                    login_result management_ip_address
+date_time               dest_ip                         dest_port
+device_id               geo_location                    http_class_name
+ip_address_intelligence ip_client                       ip_with_route_domain
+is_truncated            login_result                    management_ip_address
 method                  mobile_application_name         mobile_application_version
 policy_apply_date       policy_name                     protocol
 query_string            request                         request_status
@@ -190,7 +176,67 @@ If any one filter matches, the ASM Event will be posted to Security Hub.
 `curl -k -u admin:admin https://bigip.example.com/mgmt/shared/securityhub`
 
 #### f5-Securityhub endpoint (post rule config)
+
+Log all illegal 'GET' requests
+
 `curl -k -u admin:admin -X POST --data '{"Region":"us-east-1", "Filter": {"method":[{"Value":"GET","Comparison":"EQUALS"}]}}'  https://bigip.example.com/mgmt/shared/securityhub`
+
+
+Log all non-browser requests
+
+`curl -k -u admin:admin -X POST --data '{"Region":"us-east-1", "Filter": {"sig_names":[{"Value":"Automated client access","Comparison":"CONTAINS"}]}}'  https://bigip.example.com/mgmt/shared/securityhub`
+
+Requests blocked by WAF
+
+`curl -k -u admin:admin -X POST --data '{"Region":"us-east-1", "Filter": {"request_status":[{"Value":"blocked","Comparison":"EQUALS"}]}}'  https://bigip.example.com/mgmt/shared/securityhub`
+
+Malformed JSON
+
+`curl -k -u admin:admin -X POST --data '{"Region":"us-east-1", "Filter": {"violations":[{"Value":"Malformed JSON","Comparison":"CONTAINS"}]}}'  https://bigip.example.com/mgmt/shared/securityhub`
+
+Match GET to endpoint '/incident1.txt' in the HTTP header
+
+`curl -k -u admin:admin -X POST --data '{"Region":"us-east-1", "Filter": {"request":[{"Value":"GET /incident1.txt","Comparison":"CONTAINS"}]}}'  https://bigip.example.com/mgmt/shared/securityhub`
+
+Match any request with 'Automated client access' or 'Web Server Probe'
+
+`curl -k -u admin:admin -X POST --data '{"Region":"us-east-1", "Filter": {"sig_names":[{"Value":"Automated client access","Comparison":"CONTAINS"},{"Value":"Web Server Probe","Comparison":"CONTAINS"}]}}'  https://bigip.example.com/mgmt/shared/securityhub`
+
+Match any request with 'Automated client access' or 'Web Server Probe' or any 'POST'
+
+`curl -k -u admin:admin -X POST --data '{"Region":"us-east-1", "Filter": {"method":[{"Value":"POST","Comparison":"EQUALS"}],"sig_names":[{"Value":"Automated client access","Comparison":"CONTAINS"},{"Value":"Web Server Probe","Comparison":"CONTAINS"}]}}'  https://bigip.example.com/mgmt/shared/securityhub`
+
+The post body for the last example (it's a little more complex):
+
+```javascript
+
+{
+  "Region":"us-east-1",
+  "Filter": {
+    "method":[
+      {
+        "Value":"POST",
+        "Comparison":"EQUALS"
+      }
+    ],
+    "sig_names":[
+      {
+        "Value":"Automated client access",
+        "Comparison":"CONTAINS"
+      },
+      {
+        "Value":"Web Server Probe",
+        "Comparison":"CONTAINS"}
+    ]
+  }
+}
+
+```
+
+The configuration will forward findings that match any rule on the list.
+
+To add more rules, add them to the existing configuration and POST them to the /mgmt/shared/securityhub endpoint on your BIG-IP
+
 
 ## Configuration Schema
 
