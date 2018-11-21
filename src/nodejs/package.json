@@ -14,7 +14,7 @@
     "asm"
   ],
   "author": "Matthew Zinke <m.zinke@f5.com>",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "ajv": "^6.5.5",
     "aws-sdk": "^2.342.0",

@@ -4,7 +4,7 @@
 
 F5 Security Hub is a BIG-IP iControl LX Extension for posting ASM log events to AWS Security Hub. AWS Security Hub provides a database and dashboard for managing security event notifications across an AWS Cloud Deployment.
 
-This extension is currently in beta.
+This release is community supported, please provide feedback via [DevCentral](https://devcentral.f5.com/questions?tag=aws) (https://devcentral.f5.com/questions?tag=aws).
 
 ## Requirements
 
@@ -65,7 +65,7 @@ Installing the extension will create a remote logging profile called `securityhu
 
 Go on the BIG-IP and attach this logging profile to any virtual servers that have ASM profiles you want to track with Security Hub. 
 
-To do this, select _Local Traffic > Vritual Servers > Virtual Server List_ and a list of virtual servers should appear.
+To do this, select _Local Traffic > Virtual Servers > Virtual Server List_ and a list of virtual servers should appear.
 
 Pick the virtual server you want to connect to Security Hub, and select _Security > Policies_ from the top menu. Note this is the same menu used to apply a WAF configuration.
 
