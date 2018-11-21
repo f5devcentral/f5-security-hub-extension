@@ -15,7 +15,7 @@ const severityMap = (severity) => {
         "Informational": 0,
         "Warning": 25,
         "Critical": 75,
-        "Error": 100
+        "Error": 50
     };
     if (sevmap[severity] !== undefined) return sevmap[severity]
     else return 99;
@@ -144,7 +144,7 @@ function affFromEvent(event) {
 
     const awsFinding = {
         SchemaVersion : '2018-10-08',
-        ProductArn : `arn:aws:securityhub:${account.Region}:${account.Account}:product/f5networks/f5-advanced-waf`,
+        ProductArn : `arn:aws:securityhub:${account.Region}:250871914685:product/f5networks/f5-advanced-waf`,
         AwsAccountId : account.Account,
         Id: `${account.Region}/${account.Account}/${new Date().getTime()}`,
         Types: getEventType(event.attack_type),
