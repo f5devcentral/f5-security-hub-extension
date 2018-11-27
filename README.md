@@ -4,7 +4,7 @@
 
 The F5 Security Hub Extension is a BIG-IP iControl LX Extension for posting ASM log events to AWS Security Hub. AWS Security Hub provides a datebase and dashboard for managing security event notifations across an AWS Cloud Deployment.
 
-This extension is currently in beta.
+This extension is community supported.
 
 ## Requirements
 
