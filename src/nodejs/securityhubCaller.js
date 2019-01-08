@@ -45,6 +45,7 @@ module.exports.setCredentials = setCredentials;
 const setRegion = (new_region) => {
 
     const supported = [ 'us-east-1',
+                        'us-east-2',
                         'us-west-1',
                         'us-west-2',
                         'ap-south-1',
@@ -116,6 +117,10 @@ function securityhubCall(method, path, post_data, cb) {
         };
 
         const req = https.request(options, simpleHttpHandler);
+
+        req.on('error', (e) => {
+            console.log(new Error('Error POSTing to SecurityHub:', e.message));
+        });
 
         req.write(post_data);
         req.end();

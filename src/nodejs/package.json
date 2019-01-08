@@ -1,6 +1,6 @@
 {
   "name": "f5-securityhub",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "description": "Receives ASM remote logs and imports them to AWS Overbridge",
   "main": "index.js",
   "scripts": {
