@@ -129,16 +129,18 @@ function refreshToken(self, fetchAccount) {
 
             self.logger.fine('Security Token Fetched');
             const credentials = JSON.parse(data);
-            //self.logger.fine(credentials);
+            //self.logger.fine(JSON.stringify(credentials, null, 2));
             securityhubCaller.setCredentials(credentials);
 
             AWS.config = new AWS.Config(credentials);
+
             const stsClient = new AWS.STS({
                 region: securityhubCaller.getRegion()
             });
 
             if (fetchAccount) {
                 stsClient.getCallerIdentity({}, (err, data) => {
+                    //self.logger.fine('STS CALLBACK');
                     if(err) self.logger.fine(err);
                     else {
                         self.logger.fine('[SecurityHub] Account Identified');
@@ -152,7 +154,7 @@ function refreshToken(self, fetchAccount) {
     });
 
     req.on('error', (err) => {
-        self.logger.fine('theres been an error');
+        self.logger.fine('ERROR see below');
         self.logger.fine(err);
     });
 
