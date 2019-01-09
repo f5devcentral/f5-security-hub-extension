@@ -63,6 +63,11 @@ const setRegion = (new_region) => {
 
     if( supported.some((e) => region === e )) {
         regionCfg(new_region);
+
+        if(!sigv4_opts) {
+            return new Error('Security credentials not set, is an appropriate IAM role attached, named BIGIPSecurityHubRole?');
+        }
+        
         sigv4_opts.region = new_region;
         return null;
     } else {

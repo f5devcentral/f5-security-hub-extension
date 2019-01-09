@@ -101,66 +101,12 @@ function createLoggingProfile(cb) {
 }
 module.exports.createLoggingProfile = createLoggingProfile;
 
+
+
 function refreshToken(self, fetchAccount) {
 
     self.logger.fine('[SecurityHub] Renewing AWS Token');
-    /*
-    const region = "us-east-1",
-          secretName = "f5/securityhub/aws_credentials";
-    var secret, decodedBinarySecret;
 
-    // Create a Secrets Manager client
-    var client = new AWS.SecretsManager({
-        region: region
-    });
-
-    client.getSecretValue({SecretId: secretName}, function(err, data) {
-        if (err) {
-            self.logger.fine(err);
-        } else {
-            // Decrypts secret using the associated KMS CMK.
-            // Depending on whether the secret is a string or binary, one of these fields will be populated.
-            if ('SecretString' in data) {
-                secret = data.SecretString;
-            } else {
-                var buff = new Buffer(data.SecretBinary, 'base64');
-                decodedBinarySecret = buff.toString('ascii');
-            }
-            const raw = JSON.parse(data.SecretString);
-            const credentials = {
-                accessKeyId: raw.aws_access_key_id,
-                secretAccessKey: raw.aws_secret_access_key
-            }
-            AWS.config = new AWS.Config(credentials);
-            const stsClient = new AWS.STS({
-                region: region
-            });
-
-            if (fetchAccount) {
-                stsClient.getCallerIdentity({}, (err, data) => {
-                    if(err) self.logger.fine(err);
-                    else {
-                        self.logger.fine('[SecurityHub] Account Identified');
-                        self.logger.fine('[SecurityHub] '+JSON.stringify(data));
-                        setAccount(data);
-                    }
-                });
-            }
-
-
-            stsClient.getSessionToken({}, (err, data) => {
-                if(err) self.logger.fine(err);
-                else {
-                    securityhubCaller.setCredentials(data.Credentials);
-                    self.logger.fine('[SecurityHub] AWS Token refreshed');
-                }
-            });
-
-        }
-    });
-
-    */
-    
     //http://169.254.169.254/latest/meta-data/iam/security-credentials/BIGIPSecurityHubRole
     const http_opts = {
         host: '169.254.169.254',
@@ -175,7 +121,7 @@ function refreshToken(self, fetchAccount) {
         });
         res.on('end', () => {
             const data = buffer.join('');
-            if( res.statusCode != 200 ) {
+            if( res.statusCode >= 400 ) {
                 self.logger.fine('ERROR: Non 200 status code recievd when fetching credentials');
                 self.logger.fine(data);
                 return;
@@ -308,10 +254,21 @@ class SecurityHubForwarder extends EventEmitter {
                     this.logger.fine('[SecurityHub] Configuration updated at '+configPath);
                 }
             });
-
+            this.logger.info('a');
             translate.setRegion(opts.Region);
-            securityhubCaller.setRegion(opts.Region);
+            this.logger.info('b');
+            const rErr = securityhubCaller.setRegion(opts.Region);
+            if( rErr ){
+                this.logger.info(rErr.message);
+                return {
+                    result: 'ERROR',
+                    code: 407,
+                    message: rErr.message
+                };
+            }
+            this.logger.info('c');
             refreshToken(this, true);
+            this.logger.info('d');
 
             const result = this.filter.setFilter(opts.Filter);
             this.logger.fine('[SecurityHub] Current ruleset: '+JSON.stringify(result));

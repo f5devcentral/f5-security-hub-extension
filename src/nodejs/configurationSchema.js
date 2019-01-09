@@ -29,7 +29,8 @@ const schema = {
         Region: {
             type: 'string',
             description: 'AWS Region to send SecurityHub Findings to.',
-            enum: [ 'us-west-2',
+            enum: [ 'us-east-2',
+                    'us-west-2',
                     'us-east-1',
                     'us-west-1',
                     'ap-south-1',

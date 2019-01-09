@@ -77,7 +77,7 @@ SecurityHubWorker.prototype.onStart = function(success, error) {
  * @param {Object} restOperation
  */
 SecurityHubWorker.prototype.onGet = function(restOperation) {
-    restOperation.setBody(this.forwarder.getFilterRules());
+    restOperation.setBody(this.state);
     this.completeRestOperation(restOperation);
 };
 
@@ -103,12 +103,13 @@ SecurityHubWorker.prototype.onPost = function(restOperation) {
     })(restOperation.getBody());
 
     if( result.result === 'ERROR' ){
-        restOperation.setStatusCode(422);
+        restOperation.setStatusCode(result.code || 422);
         restOperation.setBody({
-            code: 422,
+            code: result.code || 422,
             message: result.message,
         });
     } else {
+        this.state = restOperation.getBody();
         restOperation.setBody(result);
     }
     this.completeRestOperation(restOperation);
@@ -120,7 +121,10 @@ SecurityHubWorker.prototype.onPost = function(restOperation) {
  * @param {Object} restOperation
  */
 SecurityHubWorker.prototype.onPut = function(restOperation) {
-    this.state = restOperation.getBody();
+    restOperation.setStatusCode(405);
+    restOperation.setBody({
+        code: 405
+    });
     this.completeRestOperation(restOperation);
 };
 
@@ -131,7 +135,10 @@ SecurityHubWorker.prototype.onPut = function(restOperation) {
  * @param {Object} restOperation
  */
 SecurityHubWorker.prototype.onPatch = function(restOperation) {
-    this.state = restOperation.getBody();
+    restOperation.setStatusCode(405);
+    restOperation.setBody({
+        code: 405
+    });
     this.completeRestOperation(restOperation);
 };
 
@@ -142,7 +149,10 @@ SecurityHubWorker.prototype.onPatch = function(restOperation) {
  * @param {Object} restOperation
  */
 SecurityHubWorker.prototype.onDelete = function(restOperation) {
-    this.state = {};
+    restOperation.setStatusCode(405);
+    restOperation.setBody({
+        code: 405
+    });
     this.completeRestOperation(restOperation.setBody(this.state));
 };
 
