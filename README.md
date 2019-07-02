@@ -10,7 +10,7 @@ This extension is community supported.
 
 BIG-IP VE 14.0 or later running on EC2
 
-BIG-IP 13.1 will work but the logging profile must be created by hand see f5devcentral/f5-security-hub-extension#1
+BIG-IP 13.1 will work but the logging profile must be created by hand see the [issue on log creation failure](https://github.com/f5devcentral/f5-security-hub-extension/issues/1)
 
 ## Docs
 
