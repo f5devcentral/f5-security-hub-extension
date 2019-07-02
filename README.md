@@ -8,7 +8,9 @@ This extension is community supported.
 
 ## Requirements
 
-BIG-IP VE 13.1 or later running on EC2
+BIG-IP VE 14.0 or later running on EC2
+
+BIG-IP 13.1 will work but the logging profile must be created by hand see f5devcentral/f5-security-hub-extension#1
 
 ## Docs
 
